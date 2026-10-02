@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全台書籍資料庫整合平台 - Taiwan Book Hub</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Noto Serif TC & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif+TC:wght@400;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        amber: {
+                            50: '#fdf8f0',
+                            100: '#fbeedb',
+                            600: '#d97706',
+                            700: '#b45309',
+                            800: '#92400e',
+                            900: '#78350f',
+                        },
+                        stone: {
+                            50: '#fafaf9',
+                            100: '#f5f5f4',
+                            200: '#e7e5e4',
+                            700: '#44403c',
+                            800: '#292524',
+                            900: '#1c1917',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Noto Serif TC', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Serif TC', sans-serif;
+            background-color: #fafaf9;
+            color: #292524;
+        }
+        .book-card-shadow {
+            box-shadow: 0 10px 25px -5px rgba(120, 53, 15, 0.05), 0 8px 10px -6px rgba(120, 53, 15, 0.05);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f5f5f4;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d6d3d1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a29e;
+        }
+    </style>
+</head>
+<body class="bg-stone-50 min-h-screen flex flex-col selection:bg-amber-100 selection:text-amber-900">
+
+    <!-- 導覽列 -->
+    <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-stone-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="scrollToSection('search-section')">
+                <div class="w-10 h-10 rounded-xl bg-amber-800 text-amber-50 flex items-center justify-center shadow-md">
+                    <i class="fa-solid fa-book-bookmark text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-serif font-bold text-xl tracking-wide text-stone-900">全台書籍通</h1>
+                    <p class="text-xs text-amber-800 tracking-wider font-medium">TAIWAN BOOK HUB</p>
+                </div>
+            </div>
+            
+            <nav class="hidden md:flex items-center space-x-8 text-sm font-medium text-stone-700">
+                <a href="#search-section" class="hover:text-amber-700 transition">圖書檢索</a>
+                <a href="#map-section" class="hover:text-amber-700 transition">館藏地圖</a>
+                <a href="#ranking-section" class="hover:text-amber-700 transition">熱門借閱榜</a>
+                <a href="#directory-section" class="hover:text-amber-700 transition font-semibold text-amber-800">全台圖書館目錄</a>
+                <a href="#libraries-section" class="hover:text-amber-700 transition">合作機構</a>
+            </nav>
+
+            <div class="flex items-center space-x-4">
+                <button onclick="openReadingList()" class="relative bg-amber-50 hover:bg-amber-100 text-amber-900 px-4 py-2 rounded-xl text-sm font-medium transition border border-amber-200 flex items-center space-x-2">
+                    <i class="fa-solid fa-bookmark"></i>
+                    <span class="hidden sm:inline">我的書單</span>
+                    <span id="reading-list-badge" class="bg-amber-800 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主視覺與搜尋區塊 -->
+    <section id="search-section" class="relative bg-gradient-to-b from-amber-100/60 to-stone-50 py-16 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-4xl mx-auto text-center mb-10">
+            <span class="inline-block bg-amber-200/70 text-amber-900 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider mb-3">
+                全台圖書館與實體/電子書店聯合目錄
+            </span>
+            <h2 class="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-stone-900 tracking-tight mb-4">
+                一站查詢全台館藏與購書比價
+            </h2>
+            <p class="text-stone-600 text-base sm:text-lg max-w-2xl mx-auto">
+                串聯國家圖書館、各縣市文化局圖書館、獨立書店與各大電子書平台，讓您輕鬆借閱、比價與收藏。
+            </p>
+        </div>
+
+        <!-- 智慧搜尋面板 -->
+        <div class="max-w-3xl mx-auto bg-white p-4 sm:p-6 rounded-2xl shadow-xl border border-stone-200">
+            <div class="flex flex-col md:flex-row gap-3">
+                <div class="relative flex-grow">
+                    <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-stone-400">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input type="text" id="search-input" placeholder="輸入書名、作者、圖書館名稱或 ISBN（例如：被討厭的勇氣）..." onkeydown="if(event.key==='Enter') handleSearch()"
+                        class="w-full pl-11 pr-4 py-3.5 bg-stone-50 border border-stone-300 rounded-xl text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:bg-white transition text-sm sm:text-base">
+                </div>
+                <div class="sm:w-48">
+                    <select id="filter-type" class="w-full py-3.5 px-4 bg-stone-50 border border-stone-300 rounded-xl text-stone-800 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-amber-600 focus:bg-white transition">
+                        <option value="all">全部資源類型</option>
+                        <option value="library">公共圖書館借閱</option>
+                        <option value="bookstore">實體與獨立書店</option>
+                        <option value="ebook">電子書/線上閱讀</option>
+                    </select>
+                </div>
+                <button onclick="handleSearch()" class="bg-amber-800 hover:bg-amber-900 text-white font-medium px-6 py-3.5 rounded-xl transition flex items-center justify-center space-x-2 shadow-md">
+                    <i class="fa-solid fa-search"></i>
+                    <span>搜尋書籍</span>
+                </button>
+            </div>
+
+            <!-- 熱門快速標籤 -->
+            <div class="mt-4 pt-4 border-t border-stone-100 flex flex-wrap items-center gap-2 text-xs text-stone-500">
+                <span class="font-medium text-stone-600"><i class="fa-solid fa-fire text-amber-600 mr-1"></i>熱門搜尋：</span>
+                <button onclick="quickSearch('原子習慣')" class="bg-stone-100 hover:bg-amber-100 hover:text-amber-900 px-3 py-1 rounded-lg transition">原子習慣</button>
+                <button onclick="quickSearch('被討厭的勇氣')" class="bg-stone-100 hover:bg-amber-100 hover:text-amber-900 px-3 py-1 rounded-lg transition">被討厭的勇氣</button>
+                <button onclick="quickSearch('蛤蟆先生去看心理師')" class="bg-stone-100 hover:bg-amber-100 hover:text-amber-900 px-3 py-1 rounded-lg transition">蛤蟆先生去看心理師</button>
+                <button onclick="quickSearch('百年孤寂')" class="bg-stone-100 hover:bg-amber-100 hover:text-amber-900 px-3 py-1 rounded-lg transition">百年孤寂</button>
+                <button onclick="quickSearch('台北市立圖書館')" class="bg-stone-100 hover:bg-amber-100 hover:text-amber-900 px-3 py-1 rounded-lg transition">台北市立圖書館</button>
+                <button onclick="quickSearch('高雄市立圖書館')" class="bg-stone-100 hover:bg-amber-100 hover:text-amber-900 px-3 py-1 rounded-lg transition">高雄市立圖書館</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 搜尋結果展示區 -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h3 id="result-title" class="font-serif text-2xl font-bold text-stone-900">精選與搜尋結果</h3>
+                <p id="result-subtitle" class="text-stone-500 text-sm mt-1">展示全台圖書館庫存與各大書店比價資訊</p>
+            </div>
+            <div class="text-sm text-stone-500" id="result-count">共 4 本圖書資料</div>
+        </div>
+
+        <!-- 書籍列表容器 -->
+        <div id="books-container" class="grid grid-cols-1 gap-8">
+            <!-- 這裡會由 JavaScript 動態填入書籍資料卡片 -->
+        </div>
+    </main>
+
+    <!-- 互動館藏分佈地圖模擬 -->
+    <section id="map-section" class="bg-stone-100 py-16 border-t border-stone-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-2xl mx-auto mb-10">
+                <span class="text-xs font-semibold text-amber-800 uppercase tracking-wider bg-amber-100 px-3 py-1 rounded-full">地理圖資中心</span>
+                <h3 class="font-serif text-3xl font-bold text-stone-900 mt-2">全台各縣市館藏分佈模擬</h3>
+                <p class="text-stone-600 text-sm mt-2">點選下方區域，即時檢視該縣市圖書館館藏與分館可借狀況。</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
+                <!-- 區域選擇按鈕組 -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-stone-200 space-y-3">
+                    <h4 class="font-serif font-bold text-lg text-stone-800 mb-4 flex items-center">
+                        <i class="fa-solid fa-map-location-dot text-amber-700 mr-2"></i> 選擇行政區
+                    </h4>
+                    <div class="grid grid-cols-2 gap-2" id="region-buttons">
+                        <button onclick="selectRegion('taipei')" class="region-btn p-3 text-left rounded-xl border border-stone-200 hover:border-amber-600 hover:bg-amber-50/50 transition font-medium text-sm text-stone-800 flex items-center justify-between bg-amber-50 border-amber-600">
+                            <span>台北市/新北市</span>
+                            <span class="text-xs bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">48館</span>
+                        </button>
+                        <button onclick="selectRegion('taichung')" class="region-btn p-3 text-left rounded-xl border border-stone-200 hover:border-amber-600 hover:bg-amber-50/50 transition font-medium text-sm text-stone-800 flex items-center justify-between">
+                            <span>台中市</span>
+                            <span class="text-xs bg-stone-200 text-stone-700 px-2 py-0.5 rounded-full">44館</span>
+                        </button>
+                        <button onclick="selectRegion('kaohsiung')" class="region-btn p-3 text-left rounded-xl border border-stone-200 hover:border-amber-600 hover:bg-amber-50/50 transition font-medium text-sm text-stone-800 flex items-center justify-between">
+                            <span>高雄市</span>
+                            <span class="text-xs bg-stone-200 text-stone-700 px-2 py-0.5 rounded-full">58館</span>
+                        </button>
+                        <button onclick="selectRegion('tainan')" class="region-btn p-3 text-left rounded-xl border border-stone-200 hover:border-amber-600 hover:bg-amber-50/50 transition font-medium text-sm text-stone-800 flex items-center justify-between">
+                            <span>台南市</span>
+                            <span class="text-xs bg-stone-200 text-stone-700 px-2 py-0.5 rounded-full">45館</span>
+                        </button>
+                        <button onclick="selectRegion('taoyuan')" class="region-btn p-3 text-left rounded-xl border border-stone-200 hover:border-amber-600 hover:bg-amber-50/50 transition font-medium text-sm text-stone-800 flex items-center justify-between">
+                            <span>桃園市</span>
+                            <span class="text-xs bg-stone-200 text-stone-700 px-2 py-0.5 rounded-full">40館</span>
+                        </button>
+                        <button onclick="selectRegion('others')" class="region-btn p-3 text-left rounded-xl border border-stone-200 hover:border-amber-600 hover:bg-amber-50/50 transition font-medium text-sm text-stone-800 flex items-center justify-between">
+                            <span>其他縣市/離島</span>
+                            <span class="text-xs bg-stone-200 text-stone-700 px-2 py-0.5 rounded-full">120+館</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 地圖視覺化卡片 -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-stone-200 relative overflow-hidden flex flex-col justify-between min-h-[320px]">
+                    <div class="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                        <i class="fa-solid fa-earth-asia text-9xl text-amber-900"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 id="map-region-title" class="font-serif font-bold text-xl text-stone-900">台北市 / 新北市 區域館藏概況</h4>
+                            <span class="text-xs bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-medium flex items-center">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span> 系統連線正常
+                            </span>
+                        </div>
+                        <p id="map-region-desc" class="text-stone-600 text-sm mb-6">
+                            此區域涵蓋國家圖書館、台北市立圖書館總館及各分館、新北市立圖書館總館。目前總藏書量豐富，熱門新書皆設有多重複本。
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="bg-stone-50 p-4 rounded-xl border border-stone-200">
+                            <span class="text-xs text-stone-500 block mb-1">總分館數量</span>
+                            <span id="stat-branches" class="font-serif font-bold text-2xl text-stone-900">48 館</span>
+                        </div>
+                        <div class="bg-stone-50 p-4 rounded-xl border border-stone-200">
+                            <span class="text-xs text-stone-500 block mb-1">目前可借閱總數</span>
+                            <span id="stat-available" class="font-serif font-bold text-2xl text-amber-700">142 本</span>
+                        </div>
+                        <div class="bg-stone-50 p-4 rounded-xl border border-stone-200">
+                            <span class="text-xs text-stone-500 block mb-1">平均預約等待期</span>
+                            <span id="stat-wait" class="font-serif font-bold text-2xl text-stone-900">約 3-5 天</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 熱門借閱排行榜 -->
+    <section id="ranking-section" class="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+        <div class="text-center max-w-2xl mx-auto mb-10">
+            <span class="text-xs font-semibold text-amber-800 uppercase tracking-wider bg-amber-100 px-3 py-1 rounded-full">本週風向標</span>
+            <h3 class="font-serif text-3xl font-bold text-stone-900 mt-2">全台圖書館與書店熱門借閱榜</h3>
+            <p class="text-stone-600 text-sm mt-2">結合各大公共圖書館借閱率與獨立書店銷售排行之綜合指標。</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="ranking-container">
+            <!-- 動態生成排行榜 -->
+        </div>
+    </section>
+
+    <!-- 合作圖書館與平台 -->
+    <!-- 全台圖書館快速直達與聯合目錄導覽 -->
+    <section id="directory-section" class="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full border-t border-stone-200">
+        <div class="text-center max-w-2xl mx-auto mb-10">
+            <span class="text-xs font-semibold text-amber-800 uppercase tracking-wider bg-amber-100 px-3 py-1 rounded-full">全台圖書資源整合目錄</span>
+            <h3 class="font-serif text-3xl font-bold text-stone-900 mt-2">全台各縣市圖書館與全國資料庫直達</h3>
+            <p class="text-stone-600 text-sm mt-2">點擊即可一鍵直達各官方圖書系統、全國聯合目錄，或者利用上方搜尋引擎即時比對館藏。</p>
+        </div>
+
+        <!-- 全國聯合目錄核心推薦 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <div class="bg-gradient-to-br from-amber-900 to-stone-900 text-white p-6 rounded-2xl shadow-lg flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center space-x-2 text-amber-300 text-xs font-semibold uppercase mb-2">
+                        <i class="fa-solid fa-star"></i>
+                        <span>國家級聯合目錄</span>
+                    </div>
+                    <h4 class="font-serif font-bold text-xl text-white mb-2">NBINet 全國圖書聯合目錄</h4>
+                    <p class="text-stone-300 text-sm mb-4">國家圖書館主辦，整合全台灣超過 90 所大學與公共圖書館之龐大書目資料庫，學術研究與絕版書必查。</p>
+                </div>
+                <a href="https://nbinet.ncl.edu.tw/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center space-x-2 bg-amber-600 hover:bg-amber-500 text-white font-medium py-2.5 px-4 rounded-xl text-sm transition shadow">
+                    <span>前往 NBINet 聯合查詢</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                </a>
+            </div>
+
+            <div class="bg-gradient-to-br from-amber-800 to-amber-950 text-white p-6 rounded-2xl shadow-lg flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center space-x-2 text-amber-300 text-xs font-semibold uppercase mb-2">
+                        <i class="fa-solid fa-book-open-reader"></i>
+                        <span>國立公共資訊圖書館</span>
+                    </div>
+                    <h4 class="font-serif font-bold text-xl text-white mb-2">全國公共圖書館一卡通 / 國資圖</h4>
+                    <p class="text-stone-300 text-sm mb-4">全台最大數位借閱證體系，支援電子書、國資圖數位典藏與跨縣市圖書資源互借交換服務。</p>
+                </div>
+                <a href="https://www.nlpi.edu.tw/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center space-x-2 bg-amber-600 hover:bg-amber-500 text-white font-medium py-2.5 px-4 rounded-xl text-sm transition shadow">
+                    <span>前往 國資圖館藏系統</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                </a>
+            </div>
+
+            <div class="bg-gradient-to-br from-stone-800 to-stone-900 text-white p-6 rounded-2xl shadow-lg flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center space-x-2 text-emerald-400 text-xs font-semibold uppercase mb-2">
+                        <i class="fa-solid fa-cloud"></i>
+                        <span>數位電子書整合</span>
+                    </div>
+                    <h4 class="font-serif font-bold text-xl text-white mb-2">台灣雲端書庫 & HyRead</h4>
+                    <p class="text-stone-300 text-sm mb-4">只要憑任一縣市公共圖書館借閱證，即可免出門免費借閱數萬本熱門電子書、雜誌與有聲書。</p>
+                </div>
+                <div class="flex gap-2">
+                    <a href="https://www.ebookservice.tw/" target="_blank" rel="noopener noreferrer" class="flex-1 inline-flex items-center justify-center space-x-1 bg-stone-700 hover:bg-stone-600 text-white font-medium py-2 px-3 rounded-xl text-xs transition">
+                        <span>雲端書庫</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                    </a>
+                    <a href="https://ebook.hyread.com.tw/" target="_blank" rel="noopener noreferrer" class="flex-1 inline-flex items-center justify-center space-x-1 bg-stone-700 hover:bg-stone-600 text-white font-medium py-2 px-3 rounded-xl text-xs transition">
+                        <span>HyRead</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="libraries-section" class="bg-stone-900 text-stone-300 py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-xl mx-auto mb-12">
+                <h3 class="font-serif text-2xl sm:text-3xl font-bold text-white mb-2">串聯全台重要知識據點</h3>
+                <p class="text-stone-400 text-sm">我們與超過 300+ 家公立圖書館、獨立書店及電子書庫深度合作。</p>
+        <!-- 各大縣市立圖書館分區檢索清單 -->
+        <div class="bg-white rounded-2xl border border-stone-200 p-6 sm:p-8 shadow-sm">
+            <h4 class="font-serif font-bold text-xl text-stone-900 mb-6 flex items-center">
+                <i class="fa-solid fa-map-location-dot text-amber-800 mr-2"></i>
+                全台各縣市文化局與市立圖書館系統直達庫
+            </h4>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- 北部地區 -->
+                <div class="border-l-2 border-amber-600 pl-4 space-y-3">
+                    <h5 class="font-serif font-bold text-stone-800 text-base flex items-center justify-between">
+                        <span>北部區域</span>
+                        <span class="text-xs bg-amber-50 text-amber-800 px-2 py-0.5 rounded font-normal">基北北桃竹</span>
+                    </h5>
+                    <ul class="text-sm space-y-2 text-stone-600">
+                        <li><a href="https://webcat.tpml.edu.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>台北市立圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                        <li><a href="https://www.tphcc.gov.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>新北市立圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                        <li><a href="https://www.typl.gov.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>桃園市立圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                        <li><a href="https://www.klccab.gov.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>基隆市文化局圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                        <li><a href="https://library.hccg.gov.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>新竹市文化局圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                        <li><a href="https://hchlibrary.hchcc.gov.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>新竹縣文化局圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                    </ul>
+                </div>
+
+                <!-- 中部地區 -->
+                <div class="border-l-2 border-amber-600 pl-4 space-y-3">
+                    <h5 class="font-serif font-bold text-stone-800 text-base flex items-center justify-between">
+                        <span>中部區域</span>
+                        <span class="text-xs bg-amber-50 text-amber-800 px-2 py-0.5 rounded font-normal">苗中彰投雲</span>
+                    </h5>
+                    <ul class="text-sm space-y-2 text-stone-600">
+                        <li><a href="https://www.library.taichung.gov.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>台中市立圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                        <li><a href="https://lib.miaoli.gov.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>苗栗縣立圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                        <li><a href="https://www.bocach.gov.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>彰化縣立圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                        <li><a href="https://library.nthcc.gov.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>南投縣立圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                        <li><a href="https://library.ylccb.gov.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>雲林縣公共圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                    </ul>
+                </div>
+
+                <!-- 南部地區 -->
+                <div class="border-l-2 border-amber-600 pl-4 space-y-3">
+                    <h5 class="font-serif font-bold text-stone-800 text-base flex items-center justify-between">
+                        <span>南部區域</span>
+                        <span class="text-xs bg-amber-50 text-amber-800 px-2 py-0.5 rounded font-normal">嘉南高屏</span>
+                    </h5>
+                    <ul class="text-sm space-y-2 text-stone-600">
+                        <li><a href="https://www.ksml.edu.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>高雄市立圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                        <li><a href="https://www.tnpl.tn.edu.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>台南市立圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                        <li><a href="https://www.cabcy.gov.tw/library/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>嘉義市文化局圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                        <li><a href="https://library.cyhg.gov.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>嘉義縣公共圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                        <li><a href="https://www.cultural.pthg.gov.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>屏東縣立圖書館總館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                    </ul>
+                </div>
+
+                <!-- 東部與離島 -->
+                <div class="border-l-2 border-amber-600 pl-4 space-y-3">
+                    <h5 class="font-serif font-bold text-stone-800 text-base flex items-center justify-between">
+                        <span>東部與離島</span>
+                        <span class="text-xs bg-amber-50 text-amber-800 px-2 py-0.5 rounded font-normal">宜花東澎金馬</span>
+                    </h5>
+                    <ul class="text-sm space-y-2 text-stone-600">
+                        <li><a href="https://ilccb.e-land.gov.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>宜蘭縣文化局圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                        <li><a href="https://library.hccc.gov.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>花蓮縣公共圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                        <li><a href="https://library.ccl.ttct.edu.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>台東縣文化處圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                        <li><a href="https://www.phhcc.gov.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>澎湖縣立圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                        <li><a href="https://kml.kinmen.gov.tw/" target="_blank" class="hover:text-amber-800 hover:underline flex items-center justify-between"><span>金門縣立圖書館</span> <i class="fa-solid fa-chevron-right text-xs text-stone-400"></i></a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 text-center">
+                <div class="bg-stone-800/60 border border-stone-700/50 p-5 rounded-xl hover:bg-stone-800 transition">
+                    <i class="fa-solid fa-landmark text-amber-500 text-2xl mb-2"></i>
+                    <h5 class="font-medium text-white text-sm">國家圖書館</h5>
+                    <p class="text-xs text-stone-400 mt-1">National Central Library</p>
+                </div>
+                <div class="bg-stone-800/60 border border-stone-700/50 p-5 rounded-xl hover:bg-stone-800 transition">
+                    <i class="fa-solid fa-building-columns text-amber-500 text-2xl mb-2"></i>
+                    <h5 class="font-medium text-white text-sm">台北市立圖書館</h5>
+                    <p class="text-xs text-stone-400 mt-1">Taipei Public Library</p>
+                </div>
+                <div class="bg-stone-800/60 border border-stone-700/50 p-5 rounded-xl hover:bg-stone-800 transition">
+                    <i class="fa-solid fa-book-open text-amber-500 text-2xl mb-2"></i>
+                    <h5 class="font-medium text-white text-sm">台中市立圖書館</h5>
+                    <p class="text-xs text-stone-400 mt-1">Taichung Public Library</p>
+                </div>
+                <div class="bg-stone-800/60 border border-stone-700/50 p-5 rounded-xl hover:bg-stone-800 transition">
+                    <i class="fa-solid fa-store text-amber-500 text-2xl mb-2"></i>
+                    <h5 class="font-medium text-white text-sm">獨立書店聯盟</h5>
+                    <p class="text-xs text-stone-400 mt-1">Independent Bookstores</p>
+                </div>
+                <div class="bg-stone-800/60 border border-stone-700/50 p-5 rounded-xl hover:bg-stone-800 transition">
+                    <i class="fa-solid fa-tablet-screen-button text-amber-500 text-2xl mb-2"></i>
+                    <h5 class="font-medium text-white text-sm">HyRead 電子書</h5>
+                    <p class="text-xs text-stone-400 mt-1">E-Book Platform</p>
+                </div>
+                <div class="bg-stone-800/60 border border-stone-700/50 p-5 rounded-xl hover:bg-stone-800 transition">
+                    <i class="fa-solid fa-cloud text-amber-500 text-2xl mb-2"></i>
+                    <h5 class="font-medium text-white text-sm">台灣雲端書庫</h5>
+                    <p class="text-xs text-stone-400 mt-1">Cloud E-Library</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 頁尾 -->
+    <footer class="bg-stone-950 text-stone-400 py-10 border-t border-stone-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-sm">
+            <div class="flex items-center space-x-2 mb-4 sm:mb-0">
+                <div class="w-8 h-8 rounded-lg bg-amber-800 text-white flex items-center justify-center">
+                    <i class="fa-solid fa-book-bookmark text-sm"></i>
+                </div>
+                <span class="font-serif font-bold text-white tracking-wide">全台書籍通 Taiwan Book Hub</span>
+            </div>
+            <p class="text-xs text-stone-500 text-center sm:text-right">
+                &copy; 2026 Taiwan Book Hub. 整合全台公共圖書館與各大圖書通路資料. 僅供展示與示範使用.
+            </p>
+        </div>
+    </footer>
+
+    <!-- 我的書單抽屜 Modal -->
+    <div id="reading-list-modal" class="fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 transform transition-all">
+            <div class="flex items-center justify-between pb-4 border-b border-stone-100">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-bookmark text-amber-700 text-lg"></i>
+                    <h4 class="font-serif font-bold text-xl text-stone-900">我的個人書單</h4>
+                </div>
+                <button onclick="closeReadingList()" class="text-stone-400 hover:text-stone-700 p-2 rounded-lg transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <div id="reading-list-items" class="py-4 space-y-3 max-h-96 overflow-y-auto">
+                <!-- 動態填入書單項目 -->
+            </div>
+
+            <div class="pt-4 border-t border-stone-100 flex items-center justify-between">
+                <span id="reading-list-count-text" class="text-sm text-stone-500">共 0 本書籍</span>
+                <button onclick="clearReadingList()" class="text-xs text-rose-600 hover:text-rose-800 font-medium transition">清空書單</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 輕量通知 Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 bg-stone-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center space-x-3 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-amber-400"></i>
+        <span id="toast-message" class="text-sm font-medium">已加入書單</span>
+    </div>
+
+    <!-- JavaScript 互動與資料邏輯 -->
+    <script>
+        // 書籍資料庫
+        const booksDatabase = [
+            {
+                id: 1,
+                title: "原子習慣：細微改變帶來巨大成就的實證法則",
+                author: "詹姆斯．克利爾 (James Clear)",
+                year: "2019",
+                isbn: "9789861755267",
+                cover: "https://placehold.co/240x340/fbeedb/78350f?text=Atomic+Habits",
+                description: "想改變人生？未必需要宏大的目標。暢銷全球的習慣養成聖經，教你透過每日1%的微小改變，累積驚人複利效應。",
+                libraries: [
+                    { name: "台北市立圖書館總館", status: "可外借", count: 12, shelf: "312.9 8442" },
+                    { name: "新北市立圖書館總館", status: "預約中", count: 0, waitCount: 15 },
+                    { name: "台中市立圖書館", status: "可外借", count: 8, shelf: "177.2" },
+                    { name: "高雄市立圖書館總館", status: "館內閱覽", count: 3, shelf: "專區" }
+                ],
+                bookstores: [
+                    { name: "誠品線上", price: "NT$ 315", status: "現貨供應", discount: "79折" },
+                    { name: "博客來網路書店", price: "NT$ 315", status: "現貨供應", discount: "79折" },
+                    { name: "獨立書店聯盟 (友善書業)", price: "NT$ 350", status: "部分店點有庫存", discount: "9折支持在地" }
+                ],
+                ebooks: [
+                    { name: "HyRead 電子書", status: "可線上借閱", copies: "複本 5 / 尚有 2 本可借" },
+                    { name: "台灣雲端書庫", status: "無限暢讀", copies: "市民免費借閱" }
+                ]
+            },
+            {
+                id: 2,
+                title: "百年孤寂 (50週年紀念版)",
+                author: "賈布列．賈西亞．馬奎斯 (Gabriel García Márquez)",
+                year: "2022",
+                isbn: "9789863384501",
+                cover: "https://placehold.co/240x340/e7e5e4/292524?text=One+Hundred+Years",
+                description: "魔幻寫實主義文學巨著，諾貝爾文學獎得主馬奎斯的巔峰代表作，描繪布恩迪亞家族七代人的興衰傳奇。",
+                libraries: [
+                    { name: "台北市立圖書館總館", status: "可外借", count: 4, shelf: "874.57 329" },
+                    { name: "新北市立圖書館總館", status: "可外借", count: 2, shelf: "文學區" },
+                    { name: "台中市立圖書館", status: "借閱中", count: 0, waitCount: 4 }
+                ],
+                bookstores: [
+                    { name: "誠品線上", price: "NT$ 450", status: "現貨供應", discount: "85折" },
+                    { name: "博客來網路書店", price: "NT$ 432", status: "現貨供應", discount: "82折" }
+                ],
+                ebooks: [
+                    { name: "HyRead 電子書", status: "預約等待中", copies: "複本 2 / 等待人數 8" }
+                ]
+            },
+            {
+                id: 3,
+                title: "做工的人",
+                author: "林立青",
+                year: "2017",
+                isbn: "9789869460265",
+                cover: "https://placehold.co/240x340/fef3c7/92400e?text=Workers",
+                description: "深入工地現場，記錄台灣基層勞動者的血淚與尊嚴。生動刻畫台灣營建工地的人生百態與社會溫情。",
+                libraries: [
+                    { name: "台北市立圖書館總館", status: "可外借", count: 6, shelf: "548.8 826" },
+                    { name: "高雄市立圖書館總館", status: "可外借", count: 9, shelf: "社會科學" },
+                    { name: "台南市立圖書館", status: "可外借", count: 5, shelf: "文學" }
+                ],
+                bookstores: [
+                    { name: "誠品線上", price: "NT$ 253", status: "現貨供應", discount: "79折" },
+                    { name: "獨立書店聯盟", price: "NT$ 285", status: "現貨供應", discount: "9折" }
+                ],
+                ebooks: [
+                    { name: "台灣雲端書庫", status: "可線上借閱", copies: "市民免費借閱" }
+                ]
+            },
+            {
+                id: 4,
+                title: "人類大歷史：從動物到上帝",
+                author: "哈拉瑞 (Yuval Noah Harari)",
+                year: "2014",
+                isbn: "9789865730336",
+                cover: "https://placehold.co/240x340/f5f5f4/44403c?text=Sapiens",
+                description: "從十萬年前微不足道的靈長類動物，到統治地球的智人，哈拉瑞以宏觀史觀帶領讀者重新審視人類文明。",
+                libraries: [
+                    { name: "國家圖書館參考室", status: "館內閱覽", count: 2, shelf: "歷史類" },
+                    { name: "台北市立圖書館總館", status: "可外借", count: 7, shelf: "289.1 845" },
+                    { name: "台中市立圖書館", status: "可外借", count: 4, shelf: "世界史" }
+                ],
+                bookstores: [
+                    { name: "博客來網路書店", price: "NT$ 395", status: "現貨供應", discount: "79折" },
+                    { name: "誠品線上", price: "NT$ 395", status: "現貨供應", discount: "79折" }
+                ],
+                ebooks: [
+                    { name: "HyRead 電子書", status: "可線上借閱", copies: "複本 3 / 尚有 1 本可借" }
+                ]
+            ,
+            {
+                id: 5,
+                title: "被討厭的勇氣：自我啟發之父「阿德勒」的教導",
+                author: "岸見一郎, 古賀史健",
+                year: "2014",
+                isbn: "9789861342412",
+                cover: "https://placehold.co/240x340/fed7aa/7c2d12?text=Courage+To+Be+Disliked",
+                description: "所謂的自由，就是被別人討厭。風靡亞洲的哲學諮商巨作，透過年輕人與哲人的問答，帶你解開人際關係的束縛。",
+                libraries: [
+                    { name: "台北市立圖書館總館", status: "可外借", count: 18, shelf: "177.2 844" },
+                    { name: "新北市立圖書館總館", status: "可外借", count: 9, shelf: "總館4F" },
+                    { name: "台中市立圖書館", status: "可外借", count: 14, shelf: "心理勵志" },
+                    { name: "高雄市立圖書館總館", status: "可外借", count: 11, shelf: "3F哲學區" },
+                    { name: "國立公共資訊圖書館", status: "可外借", count: 6, shelf: "176.5" }
+                ],
+                bookstores: [
+                    { name: "博客來網路書店", price: "NT$ 237", status: "現貨供應", discount: "79折" },
+                    { name: "誠品線上", price: "NT$ 237", status: "現貨供應", discount: "79折" },
+                    { name: "三民書局", price: "NT$ 255", status: "門市在庫", discount: "85折" }
+                ],
+                ebooks: [
+                    { name: "台灣雲端書庫", status: "可線上借閱", copies: "市民扣點免費借" },
+                    { name: "HyRead 電子書", status: "可線上借閱", copies: "複本 8 / 尚有 3 本可借" }
+                ]
+            },
+            {
+                id: 6,
+                title: "蛤蟆先生去看心理師",
+                author: "羅伯．狄保德 (Robert de Board)",
+                year: "2022",
+                isbn: "9786267073285",
+                cover: "https://placehold.co/240x340/bbf7d0/166534?text=Toad+Counselling",
+                description: "英國經典心理諮商入門故事。借用經典童話角色，將心理諮商過程生動演繹，是一本陪伴無數人走過低潮的溫柔之作。",
+                libraries: [
+                    { name: "台北市立圖書館總館", status: "預約中", count: 0, waitCount: 22 },
+                    { name: "桃園市立圖書館總館", status: "可外借", count: 5, shelf: "心理專區" },
+                    { name: "台南市立圖書館", status: "可外借", count: 7, shelf: "2F休閒閱讀" },
+                    { name: "屏東縣立圖書館總館", status: "可外借", count: 3, shelf: "177" }
+                ],
+                bookstores: [
+                    { name: "博客來網路書店", price: "NT$ 284", status: "現貨供應", discount: "79折" },
+                    { name: "誠品線上", price: "NT$ 284", status: "現貨供應", discount: "79折" },
+                    { name: "讀冊生活", price: "NT$ 284", status: "現貨供應", discount: "79折" }
+                ],
+                ebooks: [
+                    { name: "HyRead 電子書", status: "預約等待中", copies: "複本 4 / 等待 12 人" },
+                    { name: "台灣雲端書庫", status: "無限暢讀", copies: "支援線上立即閱讀" }
+                ]
+            }
+            }
+        ];
+
+        // 使用者書單狀態
+        let readingList = [];
+
+        // 初始化頁面載入
+        window.addEventListener('DOMContentLoaded', () => {
+            renderBooks(booksDatabase);
+            renderRanking();
+        });
+
+        // 渲染書籍清單
+        function renderBooks(books) {
+            const container = document.getElementById('books-container');
+            document.getElementById('result-count').innerText = `共 ${books.length} 本圖書資料`;
+            
+            if(books.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-16 bg-white rounded-2xl border border-stone-200">
+                        <i class="fa-solid fa-face-sad-tear text-4xl text-stone-300 mb-3"></i>
+                        <h4 class="font-serif font-bold text-lg text-stone-800">找不到符合條件的書籍</h4>
+                        <p class="text-stone-500 text-sm mt-1">請嘗試其他關鍵字或切換搜尋分類。</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = books.map(book => {
+                const isBookmarked = readingList.some(item => item.id === book.id);
+                
+                // 產生圖書館狀態標籤
+                let libraryHtml = book.libraries.map(lib => `
+                    <div class="flex items-center justify-between text-xs py-1.5 border-b border-stone-100 last:border-0">
+                        <span class="font-medium text-stone-700">${lib.name}</span>
+                        <div class="flex items-center space-x-2">
+                            <span class="px-2 py-0.5 rounded-full font-medium ${lib.status === '可外借' ? 'bg-emerald-100 text-emerald-800' : lib.status === '預約中' ? 'bg-amber-100 text-amber-800' : 'bg-stone-100 text-stone-700'}">${lib.status}</span>
+                            <span class="text-stone-500">${lib.count > 0 ? '可借: ' + lib.count + '本' : (lib.waitCount ? '等候: ' + lib.waitCount + '人' : '')}</span>
+                        </div>
+                    </div>
+                `).join('');
+
+                // 產生書店比價標籤
+                let bookstoreHtml = book.bookstores.map(store => `
+                    <div class="flex items-center justify-between text-xs py-1.5 border-b border-stone-100 last:border-0">
+                        <span class="font-medium text-stone-700">${store.name} <span class="text-[10px] text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded ml-1">${store.discount}</span></span>
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-stone-900">${store.price}</span>
+                            <span class="text-stone-500">${store.status}</span>
+                        </div>
+                    </div>
+                `).join('');
+
+                // 產生電子書標籤
+                let ebookHtml = book.ebooks.map(eb => `
+                    <div class="flex items-center justify-between text-xs py-1.5 border-b border-stone-100 last:border-0">
+                        <span class="font-medium text-stone-700"><i class="fa-solid fa-tablet-screen-button text-amber-700 mr-1"></i>${eb.name}</span>
+                        <span class="text-amber-800 font-medium">${eb.status} (${eb.copies})</span>
+                    </div>
+                `).join('');
+
+                return `
+                    <div class="bg-white rounded-2xl border border-stone-200 book-card-shadow p-6 transition hover:shadow-lg flex flex-col md:flex-row gap-6">
+                        <div class="flex-shrink-0 flex justify-center md:justify-start">
+                            <img src="${book.cover}" alt="${book.title}" class="w-36 h-48 object-cover rounded-xl shadow-md border border-stone-200" onerror="this.src='https://placehold.co/240x340/fbeedb/78350f?text=Book'">
+                        </div>
+                        <div class="flex-grow flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <span class="text-xs font-semibold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">ISBN: ${book.isbn}</span>
+                                        <h4 class="font-serif font-bold text-xl text-stone-900 mt-2">${book.title}</h4>
+                                        <p class="text-sm font-medium text-stone-600 mt-1">作者：${book.author} &bull; 出版年份：${book.year}</p>
+                                    </div>
+                                    <button onclick="toggleReadingList(${book.id})" class="p-2 rounded-xl border ${isBookmarked ? 'bg-amber-800 text-white border-amber-800' : 'bg-stone-50 text-stone-600 border-stone-300 hover:bg-stone-100'} transition shadow-sm" title="加入/移除書單">
+                                        <i class="fa-solid fa-bookmark"></i>
+                                    </button>
+                                </div>
+                                <p class="text-stone-600 text-sm mt-3 leading-relaxed">${book.description}</p>
+                            </div>
+
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6 pt-4 border-t border-stone-100">
+                                <div class="bg-stone-50 p-3 rounded-xl border border-stone-200">
+                                    <h5 class="text-xs font-bold text-stone-800 mb-2 flex items-center"><i class="fa-solid fa-landmark text-amber-700 mr-1.5"></i> 公共圖書館館藏</h5>
+                                    ${libraryHtml}
+                                </div>
+                                <div class="bg-stone-50 p-3 rounded-xl border border-stone-200">
+                                    <h5 class="text-xs font-bold text-stone-800 mb-2 flex items-center"><i class="fa-solid fa-store text-amber-700 mr-1.5"></i> 實體/獨立書店比價</h5>
+                                    ${bookstoreHtml}
+                                </div>
+                                <div class="bg-stone-50 p-3 rounded-xl border border-stone-200">
+                                    <h5 class="text-xs font-bold text-stone-800 mb-2 flex items-center"><i class="fa-solid fa-book-reader text-amber-700 mr-1.5"></i> 電子書借閱平台</h5>
+                                    ${ebookHtml}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 搜尋功能
+        function handleSearch() {
+            const query = document.getElementById('search-input').value.trim().toLowerCase();
+            const filterType = document.getElementById('filter-type').value;
+
+            let filtered = booksDatabase.filter(book => {
+                const matchQuery = !query || 
+                                   book.title.toLowerCase().includes(query) || 
+                                   book.author.toLowerCase().includes(query) || 
+                                   book.isbn.includes(query) ||
+                                   book.libraries.some(lib => lib.name.toLowerCase().includes(query));
+                
+                let matchType = true;
+                if (filterType === 'library') {
+                    matchType = book.libraries && book.libraries.length > 0;
+                } else if (filterType === 'bookstore') {
+                    matchType = book.bookstores && book.bookstores.length > 0;
+                } else if (filterType === 'ebook') {
+                    matchType = book.ebooks && book.ebooks.length > 0;
+                }
+
+                return matchQuery && matchType;
+            });
+
+            document.getElementById('result-title').innerText = query ? `「${query}」的搜尋結果` : "精選與搜尋結果";
+            renderBooks(filtered);
+            
+            // 捲動至結果區域
+            document.getElementById('result-title').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // 快速搜尋
+        function quickSearch(keyword) {
+            document.getElementById('search-input').value = keyword;
+            handleSearch();
+        }
+
+        // 地圖區域切換
+        const regionData = {
+            taipei: { title: "台北市 / 新北市 區域館藏概況", desc: "此區域涵蓋國家圖書館、台北市立圖書館總館及各分館、新北市立圖書館總館。目前總藏書量豐富，熱門新書皆設有多重複本。", branches: "48 館", available: "142 本", wait: "約 3-5 天" },
+            taichung: { title: "台中市立圖書館 區域館藏概況", desc: "包含臺中市立圖書館總館（北屯圖書館）及各區分館，綠美圖新館藏全面上線，提供便利的跨館還書服務。", branches: "44 館", available: "98 本", wait: "約 4-6 天" },
+            kaohsiung: { title: "高雄市立圖書館 區域館藏概況", desc: "以高雄總館為核心，串聯全市各行政區分館與多所市民書坊，海洋風格圖書館藏書多樣。", branches: "58 館", available: "115 本", wait: "約 2-4 天" },
+            tainan: { title: "台南市立圖書館 區域館藏概況", desc: "新總館擁有全國首創之獨立書庫與智慧化借還書系統，府城文化歷史藏書豐富。", branches: "45 館", available: "88 本", wait: "約 3-5 天" },
+            taoyuan: { title: "桃園市立圖書館 區域館藏概況", desc: "總館座落於藝文特區，擁有全台最美綠建築圖書館美譽，新書及多媒體館藏齊全。", branches: "40 館", available: "104 本", wait: "約 2-4 天" },
+            others: { title: "其他縣市與離島 區域館藏概況", desc: "涵蓋基隆、新竹、苗栗、彰化、南投、雲林、嘉義、屏東、宜花東及金馬澎湖等縣市文化局圖書館。", branches: "120+ 館", available: "250+ 本", wait: "約 5-7 天" }
+        };
+
+        function selectRegion(regionKey) {
+            // 更新按鈕樣式
+            document.querySelectorAll('.region-btn').forEach(btn => {
+                btn.classList.remove('bg-amber-50', 'border-amber-600');
+                btn.classList.add('border-stone-200');
+            });
+            event.currentTarget.classList.remove('border-stone-200');
+            event.currentTarget.classList.add('bg-amber-50', 'border-amber-600');
+
+            // 更新內容
+            const data = regionData[regionKey];
+            document.getElementById('map-region-title').innerText = data.title;
+            document.getElementById('map-region-desc').innerText = data.desc;
+            document.getElementById('stat-branches').innerText = data.branches;
+            document.getElementById('stat-available').innerText = data.available;
+            document.getElementById('stat-wait').innerText = data.wait;
+        }
+
+        // 渲染熱門排行
+        function renderRanking() {
+            const container = document.getElementById('ranking-container');
+            const rankings = [
+                { rank: 1, title: "原子習慣", author: "詹姆斯．克利爾", category: "公共圖書館借閱冠軍", count: "本週借閱 3,420 次" },
+                { rank: 2, title: "人類大歷史", author: "哈拉瑞", category: "大學圖書館熱門榜", count: "本週借閱 2,890 次" },
+                { rank: 3, title: "百年孤寂", author: "馬奎斯", category: "獨立書店熱銷排行", count: "實體庫存熱賣中" }
+            ];
+
+            container.innerHTML = rankings.map(item => `
+                <div class="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm flex items-start space-x-4">
+                    <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-900 font-serif font-bold text-lg flex items-center justify-center flex-shrink-0">
+                        0${item.rank}
+                    </div>
+                    <div>
+                        <span class="text-xs font-medium text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-md">${item.category}</span>
+                        <h4 class="font-serif font-bold text-lg text-stone-900 mt-2">${item.title}</h4>
+                        <p class="text-xs text-stone-500 mt-0.5">作者：${item.author}</p>
+                        <p class="text-xs font-medium text-stone-600 mt-3 flex items-center"><i class="fa-solid fa-chart-line text-amber-700 mr-1.5"></i> ${item.count}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 書單功能
+        function toggleReadingList(bookId) {
+            const book = booksDatabase.find(b => b.id === bookId);
+            const index = readingList.findIndex(item => item.id === bookId);
+
+            if (index > -1) {
+                readingList.splice(index, 1);
+                showToast("已從個人書單移除", "fa-solid fa-circle-minus");
+            } else {
+                readingList.push(book);
+                showToast("成功加入個人書單", "fa-solid fa-circle-check");
+            }
+
+            document.getElementById('reading-list-badge').innerText = readingList.length;
+            renderBooks(booksDatabase); // 重新渲染以更新按鈕狀態
+        }
+
+        function openReadingList() {
+            const modal = document.getElementById('reading-list-modal');
+            const container = document.getElementById('reading-list-items');
+            document.getElementById('reading-list-count-text').innerText = `共 ${readingList.length} 本書籍`;
+
+            if (readingList.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-stone-400">
+                        <i class="fa-solid fa-bookmark text-3xl mb-2"></i>
+                        <p class="text-sm">您的個人書單目前是空的。</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = readingList.map(item => `
+                    <div class="flex items-center justify-between p-3 bg-stone-50 rounded-xl border border-stone-200">
+                        <div class="flex items-center space-x-3">
+                            <img src="${item.cover}" class="w-10 h-14 object-cover rounded-md" onerror="this.src='https://placehold.co/100x140/fbeedb/78350f?text=Book'">
+                            <div>
+                                <h5 class="font-serif font-bold text-sm text-stone-900">${item.title}</h5>
+                                <p class="text-xs text-stone-500">${item.author}</p>
+                            </div>
+                        </div>
+                        <button onclick="toggleReadingList(${item.id}); openReadingList();" class="text-stone-400 hover:text-rose-600 p-2 transition">
+                            <i class="fa-solid fa-trash-can text-sm"></i>
+                        </button>
+                    </div>
+                `).join('');
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeReadingList() {
+            const modal = document.getElementById('reading-list-modal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+
+        function clearReadingList() {
+            readingList = [];
+            document.getElementById('reading-list-badge').innerText = 0;
+            openReadingList();
+            renderBooks(booksDatabase);
+            showToast("已清空個人書單", "fa-solid fa-trash-can");
+        }
+
+        // Toast 提示
+        function showToast(message, iconClass = "fa-solid fa-circle-check") {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toast-message');
+            const iconEl = document.getElementById('toast-icon');
+
+            msgEl.innerText = message;
+            iconEl.className = iconClass + " text-amber-400";
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        function scrollToSection(id) {
+            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
